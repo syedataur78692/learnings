@@ -1,0 +1,20 @@
+An IOMMU—I/O Memory Management Unit—is an MMU for devices, as opposed to processors.
+ Where an MMU translates virtual to physical addresses for a CPU accessing your system's memory, 
+an IOMMU translates virtual to physical addresses for, say, a graphics card accessing your system's memory.
+
+
++------------------------------+
+|         MAIN MEMORY          |
++------------------------------+
+     ^                  ^
+     | physical address |
+     |                  |
+  +-------+          +-------+
+  | IOMMU |          |  MMU  |
+  +-------+          +-------+
+      ^                  ^
+device|address    virtual| adrress
+      |                  |
+  +-------+          +-------+
+  |DEVICE |          |  CPU  |
+  +-------+          +-------+  
