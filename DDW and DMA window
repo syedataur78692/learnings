@@ -1,0 +1,313 @@
+
+//********************************************************************************
+// DMA Window and DDW Conceptual overview:
+// Power Systems includes many PCIe adapter slots.
+// The total number of PCIe adapter slots available can be increased further
+// by adding PCIe expansion drawers.
+// Most of(if not all) the PCIe adapter slots support hardware-backed
+// network virtualization through single root IO virtualization (SR-IOV) technology.
+//
+// The server PCIe slots are allocated DMA space that use the following algorithm
+// 1. All slots are allocated a 2 GB default DMA window
+// 2. All I/O adapter slots (except the embedded USB) are allocated Dynamic DMA Window
+//    (DDW) capability that is based on installed platform or system memory.
+// 3. If PCIe slot supports Huge DMA Window capabilities,
+//    huge DMA Window can be assigned to VF. It means allow all partition memory to
+//    be mapped for DMA. This feature is currently supported by Linux Lpar only.
+//
+// What is DDW : Default 'DMA Window' for a Slot is 2 GB,
+//               however DDW is ability to expand beyond default 'DMA Window'( of 2 GB) for a Slot
+//               and PE under it
+// What is TCE : 'DMA Window' is a range of system addresses the adapter from I/O space
+//               is allowed to access for a PE. The 'DMA Window' address is mapped to the
+//               physical memory using a Translation Control Entry (TCE) table on the IOMMU system.
+//               PHYP(Power Hypervisor) while transition Pcie(network) device to SRIOV mode
+//               alloacate resources e.g. TCEs, MSIs and MMIO window.
+//               TCE table needs 2 MB size to map a '1 GB' 'DMA Window' range,
+//               so rough formula for a TCE table size neeed is:
+//               TCE table for adapter = ( # of port supported * # of GB assigned to port for DMA Window
+//                                       * 2( 2MB to Map 1GB) ) <-- Assuming all ports DMA Window size is equal
+//               TCE size is mentioned in ConfigLid as a adapter secific file.
+//               e.g. CedarLake adapter has 2 ports, each port 512GB 'DMA Window' is given,
+//               so in ConfigLid 1024MB is specified.
+//               CedarLake TCE size in MB is 1024 MB = (256GB for single port * 2(2MB TCE for 1 GB) ) ) * 2(2 ports)
+//
+// How PHYP and PF driver decides  'DMA Window' ?
+// PF driver 'Common Layer' as a init path execution, read VF DMA range from
+//  adapter specific ConfigLid file. @see PfAdapterMgr::pInitAdapter() and
+//  calls ddwQuery hcall. ddQuery hcall's o/p can have two scenario
+//  which is explained below as 'Case 1' and 'Case 2'
+//
+//       mSlotResMgr->getSlotDmaParameters(maxNumWindows, minDmaWinSize, allocatedNumTces,
+//         hugeDmaSlot, fragmentSizes, numFragments ) ; <-- common step for Case 1 or Case 2
+//                                                          internally calls ddwQuery() hcall
+//
+// Case 1 when Enlarged IO Capacity (Huge DMA) is not enabled, just DDW is enabled:
+//        uint64 availableVfDdwSpaceInMB = 0;
+//        PartitionInfo partitionInfo;
+//        ** Retrieve the partition information that will include the amount of **
+//        ** TCE space the adjunct is configured to run with (config LID) **
+//        kernel_get_partition_info((uint64)&partitionInfo);
+//        uint64 reqTceTableSizeInMB = partitionInfo.mTceTableSizeInMB;
+//        ** First determine the number of TCE's requested -
+//        # of TCE =  TCE Table size in MB * (1024*1024)B/MB  / 8 bytes/TCE **
+//        uint64 requesteNumTces = reqTceTableSizeInMB * 1024 * 1024 / 8 ;
+//
+//        ** First set the available DMA space for VF's  to what the adjunct is **
+//        ** configured to run with (from the config LID) **
+//        ** to get DDW Space in MB's, take the number of TCE's * page size in KB's **
+//        ** then divide by 1024 KB/MB **
+//        availableVfDdwSpaceInMB =
+//           (requesteNumTces * uint64(PfSriov::DefaultTcePageSizeInKB)) / 1024ULL;
+//  **** Please note above mentioned availableVfDdwSpaceInMB is received by CX layer
+//       when Common layer ask DDW scheme for just DDW enabled slot ****
+//
+// Case 2 when Enlarged IO Capacity (Huge DMA) is enabled:
+//        ** Only if Enlarged IO Capacity (Huge DMA) is enabled for the Slot do we **
+//        ** update the availableVfDdwSpaceInMB based on what is available on the Slot. **
+//        ** Else we only report what the **
+//        ** adjunct is configured to be at (kernel_get_partition_info) **
+//        if (hugeDmaSlot)
+//        {
+//         ** TCE space is based on available TCE space allocated to the Slot **
+//         ** to get DDW Space in MB's, take the number of TCE's * page size in KB's **
+//         ** then divide by 1024 KB/MB **
+//          availableVfDdwSpaceInMB =
+//             (allocatedNumTces * uint64(PfSriov::DefaultTcePageSizeInKB)) / 1024ULL;
+//        }
+//    **** Please note above mentioned availableVfDdwSpaceInMB is received by CX layer
+//         when Common layer ask DDW scheme with Enlarged IO Capacity (Huge DMA) slot
+//         is enabled ****
+//
+// What is the relationship between DDW scheme and System memory:
+//   DDW capability is calculated assuming 4 K I/O mappings
+//   'DDW space' = 'System Memory' / 16 <-- rough estimate of 'DDW Space' allocated against 'Total System Memory'
+//
+// Below table gives a rough idea of how much DDW schement can get against 'System Memory'
+// ---------------------------------------|
+// | 4 KB DDW Space | Total System memory |
+// ---------------------------------------|
+// |    32  GB      | <= 1TB              |
+// |--------------------------------------|
+// |    128 GB      | > 1   TB to 2   TB  |
+// ---------------------------------------|
+// |    256 GB      | > 2   TB to 4   TB  |
+// ---------------------------------------|
+// |    512 GB      | > 4   TB to 8   TB  |
+// ---------------------------------------|
+// |    1   TB      | > 8   TB to 16  TB  |
+// ---------------------------------------|
+// |    2   TB      | > 16  TB to 32  TB  |
+// ---------------------------------------|
+// |    4   TB      | > 32  TB to 64  TB  |
+// ---------------------------------------|
+// |    8   TB      | > 64  TB to 128 TB  |
+// ---------------------------------------|
+// |    16  TB      | > 128 TB to 256 TB  |
+// ---------------------------------------|
+// |    32  TB      | > 126 TB to 512 TB  |
+// ---------------------------------------|
+// |    64  TB      | > 512 TB to 1   PB  |
+// ---------------------------------------|
+// |    126 TB      | > 1   PB to 2   PB  |
+// ---------------------------------------|
+// |    256 TB      | > 2   PB to 4   PB  |
+// ---------------------------------------|
+
+//  *** Below is High level overview of 'DMA Window' with 4KB Pages ***
+//  |------------------------------------------------------------------------|
+//  | Nvidia Adapter | Aco # | # ofports | Config Lid | 4 KB DDW Space when  |
+//  |                | Indx  | supported | TCE size   | enlarge I/O disabled |
+//  |                |       |           | (in MB)    |                      |
+//  -------------------------------------------------------------------------|
+//  |    Shale       |   0   |    4       |   352 MB  |     0x2C00  MB       |
+//  |    25G         |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Shale       |   1   |    4       |   TBD     |     TBD     MB       |
+//  |    25G         |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Shale       |   2   |    4       |   TBD     |     TBD     MB       |
+//  |    25G         |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Sharwhal    |   0   |    2       |   352 MB  |     0x2C000 MB       |
+//  |    100G        |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Sharwhal    |   1   |    2       |   TBD     |     TBD     MB       |
+//  |    100G        |       |            |           |                      |
+//  -------------------------------------------------------------------------|
+//  |    Sharwhal    |   2   |    2       |   TBD     |     TBD     MB       |
+//  |    100G        |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Manatee     |   0   |    2       |  176 MB   |     0x16000 MB       |
+//  |    10G & 25G   |       |            |           |                      |
+//  |------------------------------------------------------------------------|
+//  |    Manatee     |   1   |    2       |   88 MB   |     0x0B000 MB       |
+//  |    10G & 25G   |       |            |           |                      |
+//  |-------------------------------------|-----------|----------------------|
+//  |    Manatee     |   2   |    2       |   TBD     |     TBD     MB       |
+//  |    10G & 25G   |       |            |           |                      |
+//  |-------------------------------------------------|----------------------|
+//  |    CedarLake   |   0   |    2       |   1024 MB |     0x80000 MB      |
+//  |      100G      |       |            |           |                      |
+//  |----------------|-------|------------|-----------|----------------------|
+//  |    EverGlade   |   0   |    2       |   176 MB  |     0x16000 MB       |
+//  |       10G      |       |            |           |                      |
+//  |----------------|-------|------------|-----------|----------------------|
+//  |    EverGlade   |   0   |    2       |   176 MB  |     0x16000 MB       |
+//  |       25G      |       |            |           |                      |
+//  ---------------- |-------|------------|-----------|----------------------|
+
+//  @todo add a table similar to above table, if 64 KB TCE page size is used
+//        while calculating VF DMA space in MB in Common layer
+
+
+//***************************************************************************
+// Design Note:
+//  1) The following tables define the DDW Scheme for a given
+//  size of Total DDW Space available (passed in on the init call) for each
+//  option for a sigle port.  It is assume the same scheme will be usd for
+//  each port
+//  2) The Tables are ordered by size starting with the largest. This
+//  will allow the code to search for the table with the maximum DDW space
+//  requirements that will fit in the space available.
+//  3)Capacity values set to pf capacity base ie,1% = 100d
+//  4) If the table is not properly ordered(decreasing window size) will
+//  have issues in splitting and merging the window at the hcall and will
+//  have unordered liobn count which  will impact adapater initialization.
+// Example: CxAdapterVfDmaInfo10G_288GB defines the DDW Schemes for
+//   options 0, 1, & 2 based on have a total DDW space of 288GB or more.
+
+// ***********************************************
+// *                Option settings Per Port
+// ***********************************************
+//
+// Curent Config options in CxAdpaterInfo.C specifies about the options
+// should be considered for  ddw schemes's validation for the adapter.
+// src/common_mellanoxpf.pgm/Driver/CxAdapterInfo.C
+// As per the number of options specified in the current config option per port
+// ddw shemes 's should be configured as per the VF's supported per option per protocol
+
+//***************************************************************************
+//***************************************************************************
+//***************************************************************************
+//           VF DDW Table's for Ever Glades 10G
+//***************************************************************************
+//***************************************************************************
+//***************************************************************************
+
+
+// --------------------------------------------------------------------------
+//       256TB Space  DDW Scheme table  (2 * 128TB) (4K Pages)
+//       System memory in the range [> 2PB to 4PB]
+// --------------------------------------------------------------------------
+
+// Table for PfEthTypes::CnaConfig2x25G_ByOption
+/// This table represents the DDW's for the options on one port.
+/// currently both ports will have identical DDW schemes.
+// TechM Start
+const CxVfDmaWindowTrackerParmsProtocol CxAdapterVfDmaInfo10G_256TB
+[CxAdapterInfo::Eg10NumOptPerPort][CxAdapterInfo::MaxNumParmsPerOpt] =
+{
+    // Option 0,
+    //   3  window  each of 32768GB in size
+    //   4  windows each of 8192GB  in size
+    {
+        //  Min Capacity
+        //  NIC                       FCoE               Rdma               Num Windows    Size in MB
+        //  -----                     ----               ----               -----------    ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    0,          65536 * 1024 }, // 0 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    3,          32768 * 1024 }, // 98304 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,    4,          8192  * 1024 }, // 32768 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            },
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            }
+    },
+
+    // Option 1,
+    //   3  window  each of 32768GB in size
+    //  40  windows each of   512GB in size
+
+    {
+        //  Min Capacity
+        //  NIC                       FCoE               Rdma               Num Windows    Size in MB
+        //  -----                     ----               ----               -----------    ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    0,          65536 * 1024 }, // 00000 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    3,          32768 * 1024 }, // 98304 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,    40,         512   * 1024 }, // 20480 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            },
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            }
+    },
+
+    // Option 2,
+    //  3  window  each of 32768GB in size
+    //  6  windows each of  4096GB in size
+    //  8  windows each of  1024  in size
+
+    {
+        //  Min Capacity
+        //  NIC                       FCoE               Rdma              Num Windows    Size in MB
+        //  -----                     ----               ----              -----------    ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::HighCap,     0,          65536 * 1024 }, // 0 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::MediCap,     3,          32768 * 1024 }, // 98304 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::SmallCap,    6,          4096  * 1024 }, // 24576 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,  8,          1024   * 1024 },// 8192 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,  0,          0            }
+    }
+};
+
+// --------------------------------------------------------------------------
+//       128TB Space  DDW Scheme table  (2 * 64TB) (4K Pages)
+//       System memory in the range [> 1PB to 2PB]
+// --------------------------------------------------------------------------
+
+// Table for PfEthTypes::CnaConfig2x25G_ByOption
+/// This table represents the DDW's for the options on one port.
+/// currently both ports will have identical DDW schemes.
+const CxVfDmaWindowTrackerParmsProtocol CxAdapterVfDmaInfo10G_128TB
+[CxAdapterInfo::Eg10NumOptPerPort][CxAdapterInfo::MaxNumParmsPerOpt] =
+{
+    // Option 0,
+    //   3  window  each of 16384GB in size
+    //   4  windows each of  4096GB in size
+    {
+        //  Min Capacity
+        //  NIC                       FCoE               Rdma                Num Windows    Size in MB
+        //  -----                     ----               ----                -----------    ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    0,          32768 * 1024 }, // 0 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    3,          16384 * 1024 }, // 49152 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,    4,          4096  * 1024 }, // 16384 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            },
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            }
+    },
+
+    // Option 1,
+    //   3  window  each of 16384GB in size
+    //  40  windows each of   256GB in size
+
+    {
+        //  Min Capacity
+        //  NIC                       FCoE               Rdma               Num Windows    Size in MB
+        //  -----                     ----               ----               -----------    ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    0,          32768 * 1024 }, // 0 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::NotDefined,    3,          16384 * 1024 }, // 49152 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,    40,         256   * 1024 }, // 10240 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            },
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,    0,          0            }
+    },
+
+    // Option 2,
+    //  3  window  each of 16384GB in size
+    //  6  windows each of  2048GB in size
+    //  8  windows each of   512GB in size
+
+    {
+        //  Min Capacity
+        //  NIC                 FCoE                   Rdma              Num Windows   Size in MB
+        //  ----                ----                   ----              -----------   ----------
+        {   PfSriov::HighCap,   PfSriov::NotDefined,    PfSriov::HighCap,     0,          32768 * 1024 }, // 0 GB
+        {   PfSriov::MediCap,   PfSriov::NotDefined,    PfSriov::MediCap,     3,          16384 * 1024 }, // 49152 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::SmallCap,    6,          2048  * 1024 }, // 12288 GB
+        {   PfSriov::SmallCap,  PfSriov::NotDefined,    PfSriov::NotDefined,  8,          512   * 1024 }, // 4096 GB
+        {   PfSriov::NotDefined,PfSriov::NotDefined,    PfSriov::NotDefined,  0,          0            }
+    }
+};
+
