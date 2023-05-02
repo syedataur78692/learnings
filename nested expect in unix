@@ -1,0 +1,7 @@
+nested expect :
+
+   expect -c 'spawn ssh -k -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dump@junebug1.isst.aus.stglabs.ibm.com "expect -c \"spawn scp -o UserKnownHos
+tsFile=/dev/null -o StrictHostKeyChecking=no '$dmp_fil' USER@hoss.rch.stglabs.ibm.com:/afs/rchland.ibm.com/usr7/USER/dump/ ; expect password: ; send \\\"'$afspwd'\\
+\r\\\"; interact\""; expect "password:" ; send "abc123\r"; interact'
+
+absolutely works fine
