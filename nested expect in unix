@@ -5,3 +5,23 @@ tsFile=/dev/null -o StrictHostKeyChecking=no '$dmp_fil' USER@hoss.rch.stglabs.ib
 \r\\\"; interact\""; expect "password:" ; send "abc123\r"; interact'
 
 absolutely works fine
+
+
+// curl
+
+   # /dump> expect -c 'set timeout 2; spawn ssh -k -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dump@junebug1.isst.aus.stglabs.ibm.com "curl -T /ho
+me/dump/dumps/SW555306/20220805_2/debug_collector0807203345/lpadump/LPADUMP.13E0B80.2900000F.20220808012652 -u syed:xxxx786 ftp://timothy.rch.stglabs.ibm.com" ; e
+xpect password ; send "abc123\n"; interact'
+   # Warning: Permanently added 'junebug1.isst.aus.stglabs.ibm.com' (ED25519) to the list of known hosts.
+   # dump@junebug1.isst.aus.stglabs.ibm.com's password:
+   # Warning: No xauth data; using fake authentication data for X11 forwarding.
+   # % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+   #                                Dload  Upload   Total   Spent    Left  Speed
+   # 100 46.0M    0     0  100 46.0M      0  3637k  0:00:12  0:00:12 --:--:-- 4173k
+   # .../syed/dump>
+
+  afspwd=`grep AFS ~/.netrc | cut -d ' ' -f6`;
+
+   expect -c 'set timeout 3; spawn ssh -k -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no dump@junebug1.isst.aus.stglabs.ibm.com "curl -T '$dmp_fil' -
+u syed:'$afspwd' ftp://timothy.rch.stglabs.ibm.com" ; expect "password:" ; send "abc123\n"; interact'
+
