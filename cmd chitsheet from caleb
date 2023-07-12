@@ -1,0 +1,896 @@
+# learnings
+Caleb Schlossin's Cheat Sheet
+=============================
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P 2024 root@vscnXX
+    - SSH and don't add to known_hosts file
+
+:%s/\s\+$//g
+    - Remove whitespace in VIM
+
+:%!xxd
+    - Enter hex mode
+
+:%!xxd -r
+    - Exit hex mode
+
+:DirDiff <dir1> <dir2>
+    - Diff two directories files
+
+system-perfmeter -cpu-host-ticks  -module-profile -summary -window -mem -realtime sample_time = 5
+    - start system perfmeter for Simics performance testing
+
+BMC
+****
+find /proc/device-tree/ -type f -exec head {} + | less
+    - Dump device tree
+
+Slack
+******
+- ```<code block>```
+    - Add a code block to a chat
+
+Git shortcuts (from .gitconfig)
+*******************************
+[alias]
+    st = status
+    last = log -1 HEAD
+    co = checkout
+    update = !git fetch simics && git rebase simics/master
+    open = reset HEAD~1 --mixed
+    save = !git add -A && git commit -m
+    amend = commit -a --amend
+    new = checkout -b
+    review = !git push simics HEAD:refs/for/master
+
+*Access Rights*
+***************
+Access -create -a 'developer+' -co pfd_simulation -l (userid) -f aix@aix.austin.ibm.com@2035
+    -Grant a user access to our CMVC component
+
+Access -delete -a 'developer+' -co pfd_simulation -l (userid) -f aix@aix.austin.ibm.com@2035
+    -Delete a user access to our CMVC component
+
+pts adduser -user <user name> -group <group name>
+    -add a user to a pts group (must be logged in under the firmsim ID)
+
+https://jazzauth.rchland.ibm.com:7443/RationalSolutions/portal
+    - Repo: jazz07.rchland.ibm.com:13443
+    - Project: PFD Simulation
+    - Teams: PFDSimulationTeam, Virtualization Simulation Team
+    - Select team member for each
+    - RTC access
+
+pts membership -nameorid firmsim:admin
+    -list all the members of firmsim:admin
+
+/afs/rch/usr7/calebs/bin/dirauth dirname user_or_group authority [-v]
+    -Provide recursive AFS authority
+
+/afs/rch/usr7/calebs/bin/findafsuser <AFS user ID>
+        -Find the specified AFS user ID
+
+fs la
+	-list access rights of the current directory
+
+fs la <dir>
+	-list access rights of a specific directory
+
+fs sa <dir> <username> none
+	-remove access for a specific user
+
+fs sa <dir> <username> rlidwka
+	-give a specific user all access 
+
+fs sa <dir> <username> rli
+	-give a user read, list, and insert access, but not write, del, lock, admin
+	- r => read, l => list, i => insert, d => delete, w => write, k => lock, a => administer
+	-http://www.psc.edu/general/filesys/afs/setpermissions.html
+
+fs lq ~slicio
+	-check the disk space used for ~slicio
+
+fs quota <dir>
+	-check the quota for a given directory
+
+tdisk delete <name>
+        -Delete that specific tdisk
+
+firmsim password file
+=====================
+/afs/rchland.ibm.com/usr1/firmsim/install_keys/passwd/firmsim.txt
+
+Non-native Path
+==================
+/afs/rchland.ibm.com/usr6/d4a3/macro/mb/phyp1050/base/dumpMsAreas
+
+PHYP Screen Help
+================
+/afs/rchland.ibm.com/usr1/bup/public/debugnotes.log
+
+PHYP lids for those without converge access
+===========================================
+/afs/rch/usr5/phypbld/phyp/v7r6m0f180.phyp/lids/76018_002/drivers/tools/disruptive
+
+Useful PHYP debug macros
+========================
+nm xmnvram flush
+    - Flush NVRAM to flash
+    - NVRAM gets flushed when PHYP writes NVRAM, on lp power off, or every 5 minutes
+
+taskinfo -nonml
+    -Dump out hung tasks
+
+taskinfo -all -noc -frames a
+    -Dump all the PHYP tasks and their current state
+
+dumpMsAreas -pacas
+    -Dump paca information about the processors
+
+dumpMsAreas -iovpd
+    -Dump VPD info
+
+dumpMsAreas -iplp
+    -Dump IPL parms information
+
+~pbarrett/public/macros/vsp
+    -VSP macro
+
+~d4a3/phypmacro/hypinfo -paca a -disp -int -lp 0 -vp a
+    - Dump Hypervisor info to check if things are moving along
+
+xmdumppcicfg 20a 00 1 200
+    -Dump the PCI config space for bus 20A up to the offset 0x200
+
+xmwritepcicfg 20a 00 6C 00000004 1
+    -Write the PCI config register 0x6C to 0x00000004 for bus 20A
+
+xmdumptrace -b all -detail 2
+    -Dump XM trace output for debug
+
+busInfo -ib -detail iball
+    -Dump all the Galaxy2 information
+
+busInfo -ib -ibcst <address>
+    -Need to get addresses from Global Trace, Port 1 Trace, and Port 2 Trace to get the Gal2 link trace.
+
+busInfo
+	-Dump the information for all the system buses
+
+dumpCurrentStack
+	-Dump the current stack information of tasks
+
+dumpAllStacks
+	-Dump stacks on all procs
+
+pagefaults <address>
+	-Dump the register information at a pagefault
+
+dumpTI
+	-Dump the terminate immediate information
+
+taskinfo <-failed> <-all> <task address>
+	-Display tasks information on the system
+
+xmfr
+	-Dump the XM flight recorder
+
+tceMgr
+	-Dump information for the system TCE tables
+
+nm vsp -id 1 -mapvslot0 no
+    - Map virtual slot
+
+nm ribmToggleSlicVpd
+	-Native macro to turn off "Allow Breakpoints" options so all code can have breakpoints
+	-Otherwise, you can set ":ALLOWBKP." in the .ruvpd file to "Y"
+
+fspfr
+	-Dump the FSP flight recorder
+
+nm lpar -tcpadddrc <drc> <IP address>
+nm lpar -tcpupdrc <drc>
+	-Configure piranha PHYP connection
+
+TSM Backup commands
+===================
+sudo dsmc
+tsm> backup 
+    - Manual TSM backup
+
+service tsm status
+    - Check to make sure the TSM service in Linux is runnng properly
+
+sudo dsmc q filesp
+    - Show your TSM filespaces
+
+sudo dsmc q inclexcl
+    - Query Include/Exclude directories for backup
+
+Hex editor in gvim 
+==================
+    - :%!xxd
+
+AT&T Phone stuff
+----------------
+*0 Assistance
+*2 Conf Record
+*6 Mute/Unmute Line
+*71 Broadcast
+*78 Mute All
+*70 Unmute All
+
+Useful Open Firmware commands
+=============================
+dev /
+    -Switch to root directory
+
+ls
+    -List files in the directory
+
+.properties
+    -View propertie information about an adapter
+
+dev /packages/gui obe
+    -Get to SMS from OF prompt
+
+0
+    -Type at SMS to get to OF prompt
+
+pci regsf
+    -Display PCI config regs for an adapter. Must dev /pci.... to that adapter first.
+
+pci cap
+    -Walk the PCI capabilities tree
+
+<address> to active-package
+    -dev to an active PCI adapter and .properties will show information about that adapter. Similar to dev /@....
+
+ioinfo
+    -Test I/O
+
+delenv pfwdbg
+    -turn off OF debug menu
+
+debug-off
+    -This should turn off all debug
+
+boot -sverbose
+    -AIX verbose boot
+
+boot -s verbose -s trap
+    mw enter_dbg <enter>
+    2 <enter>
+    . <enter>
+    g <enter>
+        -Turn on AIX print (2 is normal, 42 is messy, f is really messy)
+
+0 100 dump
+    -Display OF level
+
+dev /packages/ipv4
+true to ip_debug?
+true to arp_debug?
+    -Debug netboot from OF
+
+setenv pfwdbg
+reset-all
+    -At OF prompt set these to turn on debug, 0 to exit out of debug menu, reset-all to reboot
+
+From a telnet session to the FSP
+================================
+smgr ipl -t 0x109
+    - Warm IPL the system
+
+registry -w iplp/SysPhypCurrentState =1
+    -Boot to PHYP standby
+
+ls /opt/p1/srci/curripl
+    -Get latest SRC
+
+echo StateData: ; registry -HR -r smgr/StateData ; echo ; echo Powerdata: ; spif spifGetRegPowerState | grep "power state" | cut -c23-25 ; echo SRCData: ; ls /opt/p1/srci/curripl
+    -FSP autoipl status command
+
+fspryo -notify CF 0002 02000000
+    -Leave standby and continue the partition boot
+
+plckIPLRequest 0x103
+    -Another type of reIPL
+
+panlexec -f42
+    -Force platform dump (memory preserving IPL)
+
+panlexec -f3
+    -Reipl the system (non memory preserving IPL)
+
+smgr ipl -t 0x20000109
+    -Memory preserving IPL
+
+svpdtool dump_menu
+	-View VPD menu
+
+powr down
+	-Power off the system (from PHYP standby to FSP Standby). Same as plckIPLRequest 0xa01
+
+powr ipl
+	-Power on the system (from FSP standby to PHYP Standby). Same as plckIPLRequest 0x1
+
+smgr fspIpl -t 0x10000803
+	-FSP Deep IPL (similar to mtdflash --reboot)
+
+cupdmfg -both
+	-update PHYP lids manually from the FSP
+	-copy lids to /opt/extucode and /alt/extucode first
+
+panlexec -f 2 -v F
+	-switch to fast mode IPL
+
+registry -l svpd/Raw_MachineTypeModel 
+        -Dump Machine Type/Model information
+
+registry -l fstp/DriverName
+	-figure out which driver is installed on the FSP
+
+plckIPLRequest 1
+	-bring the system from FSP standby to PHYP standby
+
+plckIPLRequest 0xa01
+	-bring the system from PHYP standby to FSP standby
+
+smgr toolReset
+	-reset the FSP
+
+registry -l smgr
+	-Check the state of the system (02 is FSP standby, 09 is PHYP standby)
+
+smgr mfgState
+	-Another way of checking the state of the system 
+	-standby = FSP standby, runtime = PHYP standby, ipling = FSP to PHYP standby, powering off = PHYP to FSP standby,
+	prestandby = getting up to FSP standby
+
+registry -l iplp
+	-Another way to check the system state. In particular, when iplp/SysPhypCurrentState = 02 it means PHYP is running.
+
+registry -r bparm/console_enable
+	-Read the value to see if minicom is enabled (no => disabled, yes => enabled).
+
+registry -w bparm/console_enable yes
+	-Enable minicom
+
+mnfgPFexec -on 0x00800000
+        -Disable MSD on all i5 partitions
+
+errl -l
+	-List all error received by the FSP
+
+errl -d <error ID>
+	-Display a specific error (same details as seen in ASM)
+
+registry -l dscv
+	-View sibling FSP details
+
+ssh-keygen -R hostname
+    -Remove an old SSH key. This must be done when a system is reinstalled.
+
+rsync -avp0 --delete [src dir] [dest dir]) (add -n for test)
+    -Remote sync files
+
+Useful AIX commands
+===================
+lscfg -v | grep -E 'ent|Network'
+    - Display ethernet device name and MAC address
+
+lscfg -v
+    - Display verbose output for devices (location code, network address, etc.)
+
+lsslot -c phb
+    - Display bus number and device name for PHB slots (Warning: this takes a long time to run in Simics)
+
+smitty
+    - Configure AIX TCP/IP
+
+errpt -a
+    - Dump AIX error log
+
+lscfg
+    - Dump the configuration and location codes for devices configured
+
+/usr/lib/boot/bin/dmpdt_chrp
+    -Dump the AIX device tree
+
+/usr/lib/methods/cfgbus_pcic -dl pciX
+    -Configure the bus at pciX. Dumps to file BUS.out
+
+lsdev
+    -List all the devices
+
+odmget -q "uniquetype=adapter/pci/14106902" PdAt
+    -Get ODM db for entry in quotes. That parm can be retrieved from the cfgbus_pcic command above.
+
+cfgmgr -l pciX
+    -Configure the bus at PCI bus pciX
+
+lsattr -El ent0 -a busmem
+    -List the attribute busmem for device ent0 (rom_mem is another option)
+
+mkdev -l ent0
+    -Make the device ent0
+
+export CFGLOG=""
+mkdev -l ent0
+alog -o -t cfg
+    -Extra debug when making device
+
+trace -a -j 475
+mkdev -l ent0
+trcstop
+trcrpt
+    -Get a trace of the ethernet driver
+
+odmget -q name=ent0 CuAt [CuDv]
+    -Print CuAt attribute info
+
+chdev -l ent0 -a chksum_offload=no
+    -Turn off the attribute of checksum offload
+
+ifconfig en0 detach
+    -Detach (remove) object en0 from the ethernet config
+
+entstat -d ent0
+    -View the ethernet statistics of ent0
+
+trace -a -j 473,474,475
+<ethernet traffic command>
+trcstop
+trcrpt
+    -Gather extra trace data for debugging ethernet traffic or ethernet bringup
+
+*Developer Stuff*
+*****************
+Creating a non-disruptive fix
+    1) Create the new lid without the -disruptive option, specify your disruptive lid name with the -basesp option, in your partlist only include the changed parts (you could also use the delta parts to save space).
+    2) Load on the new lid with lidupdate (specify FSP port for Simics)
+    3) Run the macro "cfmcu -act" to activate the new lid
+
+crtlid -family converge -release <release> -stage <cur/bld> -tracks approved <ptr_list> -basesp <base lidname> 
+	-sp <lidname> -partlist <istream> <-createrpm xxx+1> <-zerorpm>
+
+	-Create a lid with either a part list of PTRs or an istream of files
+	 
+	 Example of an istream for simics 300 driver
+	 ==========================================
+	 crtlid -family converge -release v3r1m0f300.phyp -stage cur -basesp simics_300 -sp calebsBusNumber -partlist ~/public/istreams/xmtest.istream -disruptive
+
+lidupdate <FSP_name> -dir <lid_dir>
+	-Load a created lid on a machine
+	-Example: lidupdate zf10e -dir /converge/v2r3m5f110.phyp/cur/gen/fixes-tools/calebsMacroTest/disruptive/
+~calebs/public/scripts/createistream.perl
+	-Perl script to create an istream file from a user.candl file
+
+~calebs/public/scripts/inrelease.perl -r <release> <files>
+	-Perl script to check if files exist in the specified release
+
+~torzewsk/bin/defectdiff <release> <defect/DCR>
+	-Automatically ezmrgs all of the files that were changed. THIS MUST BE RUN FROM TYPESCRIPT!!
+	-Example: ~torzewsk/bin/defectdiff v3r1m0.phyp D93440.30
+
+~calebs/public/scripts/runbeam.perl partname.C
+	-Run BEAM against a part to make sure it doesn't flag any errors.
+
+whereused -q -f converge -r <release> base.pgm/IO/BusTransport/XmIplSpdTypes.H | grep textvmc | grep -v oft
+	-Used to determine which files include a particular header file
+
+File -checkout <filename> -defect <ptr> -release <release>
+	-Check out a file for editing
+	-Example: File -checkout filename.C -defect P9A12345 -release v2r3m5.phyp
+
+File -checkin <filename> -defect <ptr>
+	-Check in a file after editing
+	-Example: File -checkin filename.C -defect P9A12345
+
+Fix -complete -defect <defect/ptr> -family converge -release <release> -component <compname.phyp>
+	-Complete the fix once the files are checked in
+	-Example: Fix -complete -defect P9B13611 -family converge -release v2r4m0.phyp -component LHRI.phyp
+
+Fix -activate -defect <defect/ptr> -family converge -release <release> -component <component.phyp>
+	-Undo a Fix -complete so more changes can be made.
+
+Track -integrate -release <release> -defect <defect/ptr> -family converge
+	-Integrate the track after the fix has been marked complete
+	-Example: Track -integrate -release v2r4m0.phyp -defect P9B13611 -family converge
+
+compfix <release> <cur/bld> <filename1> <filename2>
+	-Spits out a command to use for compiling your code
+
+c
+
+man -M/afs/rch/usr7/xman/public/man <fileName>
+	-Look at specific information about a file. Some information is very useful.
+
+nm cfmcu -act
+	-Activate a concurrently loaded on lid
+
+nm cfmcu -rev
+	-Macro to use after finding a bug and reloading a concurrently built lid
+
+
+Helpful Simics commands
+=======================
+@conf.mccoy0_ilia_cpu0.step_rate=[3,1,0]
+    -Increase the FSP step rate to increase GA2 console preformance
+
+Load new PFW lids
+=================
+lidupdate -dir <PFW directory>
+nm lidmgrp flush
+reboot LPARs
+
+PHYP failure debug
+==================
+From FSP, run "panlexec -f 12" and "panlexec -f 13". These are the failing addresses.
+Open up jpiranha -simulator, restore the checkpoint, and search for the listing of that failure address.
+OR
+Find the stack that took the machine down.
+Then run this macro, passing the ISF address of the hvwhack stack entry:
+/afs/rchland.ibm.com/usr7/tomburks/macro/hvwhackdata.mycroft
+
+Vance Tips -> /afs/rchland.ibm.com/usr1/mjvance/public/tips/vanceTips
+
+eClipz FSP commands
+===================
+gip2hom showconfig system 0xff | grep CORE
+    - Find the number of processor cores the FSP sees configured in the system
+
+smgr toolReset
+	-Reset the FSP
+
+registry -Hw iplp/SysPhypSetDefaultPartition 1
+dd if=/dev/zero of=/dev/mtdblock/phypnvram
+	-Clear PHYP NVRAM to get into MDC mode
+
+eClipz commands to run before IPLing
+====================================
+fsp-trace --reset
+gard -clr all
+errl -p
+touch /tmp/type2
+registry -Hw cini/ThreadingDisabled 0x1
+
+
+
+
+IP config via FSP
+=================
+utilreg -w fstp/eth1_ipaddress 172.16.255.251
+	-Set the eth1 IP address to 172.16.255.251
+
+registry -l eth1
+	-Look at all the eth1 attributes
+
+smgr fspIpl -t 0x10000803
+	-Reset the FSP
+
+SHCM (from the FSP)
+===================
+GardGetConfig
+	-View the gard config and stuff that is garded out
+
+gard -clr all
+	-Clear all the gard records
+
+gard -sp dpm -E
+	-Enable deconfigure power management policy
+
+gard -md io -x
+	-Gard out IO unit x. That unit will be a numbered IO Hub (GX+ Adapter).
+
+gard -md dpm_io
+	-Gard out DPM IO
+
+rmgrcmd --backup=ungard
+	-Ungard the backup FSP
+
+registry -l dscv/FspRole
+	-Check if your FSP is primary (01) or backup (0)
+
+ccmmtest -g --fru=gx --query-purpose=general
+	-Check your GX+ reservations
+
+ccmmtest --reserve --operation=reserve --type=1hriog --location x.y.z
+	-Reserve a GX+ adapter at location x.y.z
+
+ccmmtest --reserve --operation=cancel --type=1hriog --location x.y.z
+	-Cancel a GX+ adapter reservation at location x.y.z
+
+ccmmtest --dump | more
+	-Check to see which CM locks are active on the system and pipe it to the more command.
+
+cupdmfg -b
+	-Display relevant FSP information
+
+fsp-trace -b -o /nfs/FFDC/147 -p&
+	-Start binary trace on one side (must do on both FSPs)
+
+killall fsp-trace
+	-Kill all traces
+
+~vmena/public/tools/fsp-capture <fsp_address> -o /tmp
+	-Gather the FSP capture (this must be run from the companion)
+
+ls /opt/p1/srci/systrace
+	-List SRCs for the system
+
+panlexec -f 1 -m m
+	-Force a system to IPL in manual mode
+
+HMC stuff
+=========
+lspartition -dlpar
+	-Show active RMC connections for RPA DLPAR to be enabled
+
+lshmc -V
+	-List the HMC version information
+
+/opt/ccfw/data/service/
+	-This is where the RV logs are found.
+
+/var/hsc/log/
+	-This is where most other logs are found (cimserver.log, iqzdtrac.trm, iqyylog.log, hdwr_srv.log)
+
+cd /tmp/traces    or cd  /var/hsc/log
+iqzdtcre -s99999 -p
+this creates iqzdtrac.trm
+	-These are the three steps used for starting an HMC trace file. Do this before an HMC failure.
+
+Setting up a mount on the FSP from the companion
+================================================
+(From the companion Linux box)
+
+/tmp/<fsp name>/x86linux/bin/fspremote --user=dev --password=FipSdev --fsp=<fsp ip address> --remote=<companion system> --rpath=<path you want to mount>
+	-example: /tmp/zx102e/x86linux/bin/fspremote --user=dev --password=FipSdev --fsp=9.5.250.126 --remote=zx102c --rpath=/tmp/zx102e/fsp
+
+	Setting up a mount if fspremote doesn't work:
+	=============================================
+	(From the FSP)
+
+	mount -o nolock -t nfs <companion ip>:/home/grtest/<fsp name>/fsp /nfs
+
+Bring down the FSP firewall
+===========================
+(From the companion Linux box)
+
+/tmp/<fsp name>/x86linux/bin/fspremote --user=dev --password=FipSdev --fsp=<fsp ip address> --unlock
+
+What driver is my fix in?
+=========================
+qryfips <defect or PTR number>
+	-Figure out which driver level a fix is integrated into
+
+
+** Gathering SRCs from a telnet session to the FSP **
+=====================================================
+
+ls /opt/p1/srci/curripl/	
+	-Return current SRC on the system OP panel
+
+ls /opt/p1/srci/termcec/
+	-Return last CEC termination SRC
+
+ls /opt/p1/srci/systrace/
+	-SRC history (can wrap)
+
+panlexec -f 11
+	-current SRC on the sytem OP panel
+
+panlexec -f 12
+	-extended words of the current SRC on the system OP panel
+ 
+panlexec -f 13
+	-extended words of the current SRC on the system OP panel
+
+panlexec -f 14
+	-extended words of the current SRC on the system OP panel
+
+
+Determine HMC code level
+========================
+
+1) SSH into the HMC: ssh hscroot@zx102b
+2) Type: lshmc -V
+	-or you can type lshmc -b for bios level
+3) It will output the necessary info for determining HMC level.
+
+Macros to be run in PHYP
+========================
+
+vsp
+	-display partition information
+
+vsp -id <partition number> -on (-off)
+	-turn a specific partition on or off
+
+vsp -id <partition number> -func 21
+	-force DST when you are in XPF
+
+Helpful IH commands
+===================
+
+smgr -t 0x10000803 fspIpl
+	-Reset the IH node (this is to be used instead of mtdflash --reboot)
+
+Power code
+==========
+Component is pppc_sqh_rel
+
+From xterm or typescript
+========================
+~garyl/ccin <CCIN>
+	-Get information about a card by CCIN
+
+vtty-fsp <fsp name> -timeout <value in minutes>
+	-open a connection to PHYP macro mode (only one person can be connected at a time)
+
+lidupdate <fsp name> -chksys
+	-display the code levels on a specific system
+
+gtpcal <fsp name> -w &
+	-display the calendar for a system and run the process in the background
+
+piranha_hub
+	-start a jpiranha hub on an AIX box
+
+
+*Connect to JPiranha (PHYP macros and istreams mostly)*
+*******************************************************
+vtty-fsp <fsp name> -timeout 0 -setuponly
+jpiranha -vterm -server <aix server, ie. edelbrock> -host <fsp name>
+
+*Connect to Piranha native (SLIC macros and istreams mostly)*
+************************************************
+piranha -native -host <piranha connection to server ie. zx102p1p>
+
+
+Run ASM
+=======
+
+From a web browser of your choosing type:
+https://<fsp name of the system>
+
+Save Profile Data from HMC to Home directory
+============================================
+
+From the HMC when in terminal mode (black screen only Ctrl+Alt+F1)
+1) cd /var/hsc/profiles/<system name>
+2) Copy backup file to home directory on the HMC: cp backupfilename /home/hscroot/backupfilename
+3) SSH into your AIX server of choice: ssh <user id>@<your AIX server, ie. edelbrock>
+4) Move to the directory you would like to store the backup file in. For example: cd public/backups/
+5) Use the secure copy command to copy from the HMC to your selected directory: 
+	scp hscroot@<system name, ie. zx102b>:/home/hscroot/backupfilename . 
+6) You should see details about the transfer including the file size and percent of the task complete.
+7) Once the transfer finishes you are all done!
+
+HMC managed to MGC mode
+=======================
+
+Following is a first pass at a set of customer instructions for taking a system back to MGC mode after having it controlled by an HMC.  Let me know how it looks.  We have tried it a couple times with pretty good results.
+
+****Make sure to back up your profile data and save it off somewhere before you start!*****
+
+From the controlling HMC:
+1) Power the managed system up to Standby state.
+2) Right-click on the Managed System and select Profile Data/Initialize.  This will delete all partition/profile data.
+3) Open a restricted shell, and type the command: lpcfgop -m  -o clear.      This will delete Partition data from the FSP.
+4) Right-click on the Managed System and select Reset or Remove Connection, and then select Remove connection.   The managed system is now disconnected from the HMC.
+
+From an ASMI connection to the FSP:
+5) Select Power/Restart Control, then Power On/Off System.  Set the field: Boot to System Server Firmware: from standby to running.
+6) Now select "Save Settings and Power Off".
+7) Refresh the Power/Restart Control, Power On/Off System screen, until "Current system power state: Off" is displayed.
+8) Select "Save settings and power on".
+
+The system should now be back in MGC mode.
+
+These steps will be documented in GA2 documentation....believe it missed GA1 doc.
+
+SRC's
+=====
+
+'/afs/rch/rel/common/iop/sp/bin/fipslookup -release fips -driver b0215a_0408 F64E' then replace the last bit with the lower 2 bytes of the SRC
+	-For B181 SRC's
+
+slicsrc (src number)
+	-For SLIC SRC's
+
+Linux commands
+==============
+sudo service rtvscand stop
+    - Stop antivirus that is sucking up cpu time
+
+sudo /opt/Symantec/symantec_antivirus/sav liveupdate -s -f daily -i 01:00 -m 0
+    - Change Symantec LiveUpdate to run daily at 1AM (instead of during the work day)
+
+/usr/lib64/python2.6/site-packages/wst/linux/av.py
+    - File that WST uses to check rtvscand status
+
+http://www.ss64.com/bash/
+
+XPF commands
+============
+
+vrycfg
+	-Vary on a resource by logical name
+
+apyptf
+	-Apply PTFs on the system
+
+dspptf
+	-Display PTFs on the system
+
+go licpgm (option 10, F11 to page over)
+	-check which licenses you have
+
+dspcluinf
+	-Display Cluster information
+
+crtclu
+	-Create a cluster
+
+adddevdmne
+	-Add a device domain
+
+strclunod <name> <node>
+	-Start a specific cluster
+
+strsst
+	-Start service tools (DST tools like HSM, etc.)
+
+pwrdwnsys
+	-Power down system or partition (partition select *IMMED, no restart, IPL side usually A or B) 
+
+Helpful XPF commands for Switchable towers
+==========================================
+dspcluinf
+	-Display Cluster information
+
+crtclu
+	-Create Cluster
+
+chgclunode (node entry)
+	-Change a cluster node
+
+dltclu
+	-Delete Cluster
+
+strclunod
+	-Start Cluster Node
+
+endclunod
+	-End Cluster Node
+
+addclunod
+	-Add Cluster Node
+
+adddevdmne
+	-Add Device Domain Entry
+	-All Nodes in the same switchable environment have to be in the same device 
+domain
+
+strtcpsvr *inetd
+	-Start TCP Service
+
+chgusrprf quser
+	-Change User profile options for quser
+
+dspneta
+	-Display net address????
+
+chgneta
+	-Change net address????
+
+chgcrgpri (cluster,crg)
+	-Change CRG ???
+
+dspcrginf (RSCgrp *list)
+	-Display CRG information  
+
+endcrg <clustername> <crgname>
+	-End CRG. MAKE SURE TO DO THIS BEFORE IPLING THE MACHINE (if you have a cluster + a CRG set up)
