@@ -1,0 +1,12 @@
+
+SysName="z2537ap3.rch.stglabs.ibm.com";
+SysPass="rpa4test\n";
+
+
+  expect -c 'set timeout 3; spawn ssh -k root@'$SysName' "rm -fr host1.secrets; i1=1;i2=2;k=12;for i in {1..20} ;do m=`expr \$k + \$i`; echo \$m.\$m.\$m.\$i1 \$m.\$m.\$m.\$i2: PSK \\\"pr
+e_shared_key_ip\$i\\\">>host1.secrets  ; done  " ; expect "password: " ; send "'$SysPass'\r"; interact'
+
+  expect -c 'set timeout 3; spawn ssh -k root@'$SysName' "cat host1.secrets" ; expect "password: " ; send "'$SysPass'\r"; interact'
+  exit;
+
+~
